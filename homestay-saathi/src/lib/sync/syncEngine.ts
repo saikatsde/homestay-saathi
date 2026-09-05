@@ -1,7 +1,10 @@
 // Sync Engine & Mutation Queue Manager per docs/04-data-sync-protocol.md
 import { db, generateUUID, getOrCreateSyncMeta } from '../db';
-import { MutationQueueItem, SyncStatus } from '../types';
+import { MutationQueueItem } from '../types';
 import { getConnectivityStatus, subscribeConnectivity } from './connectivity';
+import { isFirebaseConfigured } from '../firebase/config';
+import { getCurrentSession, signInAnonymousUser } from '../firebase/auth';
+import { syncMutationToFirestore, pullAllFromFirestore } from '../firebase/firestoreSync';
 
 export interface SyncEngineStatus {
   isSyncing: boolean;
@@ -9,6 +12,7 @@ export interface SyncEngineStatus {
   failedCount: number;
   lastSyncedAt: string | null;
   lastError: string | null;
+  cloudSynced: boolean;
 }
 
 type SyncListener = (status: SyncEngineStatus) => void;
@@ -20,6 +24,7 @@ let syncState: SyncEngineStatus = {
   failedCount: 0,
   lastSyncedAt: null,
   lastError: null,
+  cloudSynced: false,
 };
 
 function notifySync() {
@@ -47,6 +52,7 @@ export async function refreshQueueCounts(): Promise<void> {
     pendingCount: pending + syncing,
     failedCount: failed,
     lastSyncedAt: meta?.lastSyncedAt || null,
+    cloudSynced: !!meta?.uid,
   };
   notifySync();
 }
@@ -125,6 +131,19 @@ export async function drainSyncQueue(): Promise<{ synced: number; failed: number
   let failedCount = 0;
 
   try {
+    const meta = await getOrCreateSyncMeta();
+    let effectiveUid = getCurrentSession()?.uid || meta.uid;
+
+    // If Firebase is configured but no session yet, attempt auto-anonymous sign-in
+    if (isFirebaseConfigured() && !effectiveUid) {
+      try {
+        const anonSession = await signInAnonymousUser();
+        effectiveUid = anonSession.uid;
+      } catch (authErr) {
+        console.warn('[SyncEngine] Auto anonymous sign-in skipped:', authErr);
+      }
+    }
+
     const pendingItems = await db.mutationQueue
       .where('syncStatus')
       .anyOf('pending', 'failed')
@@ -140,9 +159,20 @@ export async function drainSyncQueue(): Promise<{ synced: number; failed: number
       await refreshQueueCounts();
 
       try {
-        await new Promise(r => setTimeout(r, 450));
-        const serverUpdatedAt = new Date().toISOString();
+        let serverUpdatedAt = new Date().toISOString();
 
+        // 1. If Firebase is configured and user is signed in, sync to Cloud Firestore
+        if (isFirebaseConfigured() && effectiveUid) {
+          const res = await syncMutationToFirestore(effectiveUid, item);
+          if (res.serverUpdatedAt) {
+            serverUpdatedAt = res.serverUpdatedAt;
+          }
+        } else {
+          // Graceful fallback for offline / mock testing when Firebase credentials are not set
+          await new Promise((r) => setTimeout(r, 200));
+        }
+
+        // 2. Update local entity status
         if (item.entity === 'booking') {
           await db.bookings.update(item.entityId, {
             syncStatus: 'synced',
@@ -162,19 +192,22 @@ export async function drainSyncQueue(): Promise<{ synced: number; failed: number
           });
         }
 
+        // 3. Mark mutation as synced
         await db.mutationQueue.update(item.operationId, {
           syncStatus: 'synced',
         });
 
         syncedCount++;
-      } catch (err: any) {
+      } catch (err: unknown) {
+        console.error('[SyncEngine] Mutation sync error:', err);
+        const errorMsg = err instanceof Error ? err.message : 'Sync connection timeout';
         const nextRetry = item.retryCount + 1;
         const finalFailed = nextRetry >= 8;
 
         await db.mutationQueue.update(item.operationId, {
           syncStatus: finalFailed ? 'failed' : 'pending',
           retryCount: nextRetry,
-          errorMessage: err?.message || 'Sync connection timeout',
+          errorMessage: errorMsg,
         });
 
         failedCount++;
@@ -185,14 +218,53 @@ export async function drainSyncQueue(): Promise<{ synced: number; failed: number
     await db.syncMeta.update('singleton', { lastSyncedAt: nowISO });
     syncState.lastSyncedAt = nowISO;
     syncState.lastError = null;
-  } catch (err: any) {
-    syncState.lastError = err?.message || 'Sync failed unexpectedly';
+  } catch (err: unknown) {
+    syncState.lastError = err instanceof Error ? err.message : 'Sync failed unexpectedly';
   } finally {
     syncState.isSyncing = false;
     await refreshQueueCounts();
   }
 
   return { synced: syncedCount, failed: failedCount };
+}
+
+/**
+ * Pull latest data from Cloud Firestore and merge into IndexedDB
+ */
+export async function pullLatestFromCloud(): Promise<{ totalPulled: number; error?: string }> {
+  if (getConnectivityStatus() !== 'online') {
+    return { totalPulled: 0, error: 'Cannot pull from cloud while offline.' };
+  }
+
+  const meta = await getOrCreateSyncMeta();
+  const effectiveUid = getCurrentSession()?.uid || meta.uid;
+
+  if (!isFirebaseConfigured() || !effectiveUid) {
+    return { totalPulled: 0, error: 'Firebase is not configured or user is not logged in.' };
+  }
+
+  try {
+    syncState.isSyncing = true;
+    notifySync();
+
+    const counts = await pullAllFromFirestore(effectiveUid);
+    const total = counts.bookingsCount + counts.ledgerCount + counts.listingsCount + counts.checklistCount;
+    
+    const nowISO = new Date().toISOString();
+    await db.syncMeta.update('singleton', { lastSyncedAt: nowISO });
+    syncState.lastSyncedAt = nowISO;
+    syncState.lastError = null;
+    await refreshQueueCounts();
+
+    return { totalPulled: total };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : 'Pull failed';
+    syncState.lastError = errorMsg;
+    return { totalPulled: 0, error: errorMsg };
+  } finally {
+    syncState.isSyncing = false;
+    notifySync();
+  }
 }
 
 export function initSyncEngine(): () => void {
@@ -208,3 +280,4 @@ export function initSyncEngine(): () => void {
     unsubConn();
   };
 }
+

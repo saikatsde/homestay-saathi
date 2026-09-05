@@ -93,6 +93,9 @@ export interface SyncMeta {
   deviceId: string;
   lastSyncedAt: string | null;
   authState: 'anonymous' | 'authenticated';
+  uid?: string | null;
+  userEmail?: string | null;
+  authProvider?: string | null;
   hostName: string;
   homestayName: string;
   location: string;

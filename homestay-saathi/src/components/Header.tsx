@@ -1,7 +1,7 @@
 // App Header with 1-Tap Language Switcher and AI Status Badge
 import React from 'react';
 import Link from 'next/link';
-import { Bot, Sparkles, Settings as SettingsIcon, Zap } from 'lucide-react';
+import { Bot, Sparkles, Settings as SettingsIcon, Zap, Cloud } from 'lucide-react';
 import { SupportedLanguage, ModelAvailabilityState, SyncMeta } from '../lib/types';
 import { translations } from '../lib/i18n/translations';
 
@@ -54,8 +54,20 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </Link>
 
-        {/* Right: AI Status + Multilingual Toggle + Settings */}
+        {/* Right: Cloud Sync Status + AI Status + Multilingual Toggle + Settings */}
         <div className="flex items-center gap-2">
+          {/* Cloud Status Badge */}
+          {syncMeta?.uid && (
+            <Link
+              href="/settings"
+              className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-semibold bg-[#1d4431] hover:bg-[#25553e] border border-[#2e684a] text-emerald-200 transition-colors"
+              title={`Cloud Firestore Connected (UID: ${syncMeta.uid})`}
+            >
+              <Cloud className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Cloud</span>
+            </Link>
+          )}
+
           {/* AI Badge Button */}
           <button
             type="button"

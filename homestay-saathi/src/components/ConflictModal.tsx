@@ -1,7 +1,7 @@
 // Conflict & Sync Review Modal per docs/06-offline-ux-wireframes.md
-import React from 'react';
-import { RefreshCw, X, ShieldAlert, Clock } from 'lucide-react';
-import { SyncEngineStatus, drainSyncQueue } from '../lib/sync/syncEngine';
+import React, { useState } from 'react';
+import { RefreshCw, X, ShieldAlert, Clock, Cloud, ArrowDownToLine } from 'lucide-react';
+import { SyncEngineStatus, drainSyncQueue, pullLatestFromCloud } from '../lib/sync/syncEngine';
 
 interface ConflictModalProps {
   isOpen: boolean;
@@ -14,10 +14,23 @@ export const ConflictModal: React.FC<ConflictModalProps> = ({
   onClose,
   syncState,
 }) => {
+  const [pullMsg, setPullMsg] = useState<string | null>(null);
+
   if (!isOpen) return null;
 
   const handleRetrySync = () => {
     drainSyncQueue();
+  };
+
+  const handlePull = async () => {
+    setPullMsg('Pulling from Firestore...');
+    const res = await pullLatestFromCloud();
+    if (res.error) {
+      setPullMsg(`⚠️ ${res.error}`);
+    } else {
+      setPullMsg(`✅ Pulled ${res.totalPulled} cloud records.`);
+    }
+    setTimeout(() => setPullMsg(null), 4000);
   };
 
   return (
@@ -36,14 +49,28 @@ export const ConflictModal: React.FC<ConflictModalProps> = ({
             <ShieldAlert className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="font-bold text-lg text-saathi-tea-900">
-              Sync & Conflict Status
-            </h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-lg text-saathi-tea-900">
+                Sync & Conflict Status
+              </h3>
+              {syncState.cloudSynced && (
+                <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                  <Cloud className="w-3 h-3" />
+                  <span>Cloud Active</span>
+                </span>
+              )}
+            </div>
             <p className="text-xs text-saathi-mist-700">
               Idempotent Offline Queue & Field-Level Merge Log
             </p>
           </div>
         </div>
+
+        {pullMsg && (
+          <div className="mb-3 p-2.5 bg-blue-50 border border-blue-200 text-blue-800 text-xs rounded-xl font-medium">
+            {pullMsg}
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3 mb-4">
           <div className="bg-saathi-warm-50 border border-saathi-warm-200 rounded-xl p-3 text-center">
@@ -85,20 +112,29 @@ export const ConflictModal: React.FC<ConflictModalProps> = ({
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={handleRetrySync}
             disabled={syncState.isSyncing}
-            className="flex-1 btn-primary py-2.5 text-xs font-semibold flex items-center justify-center gap-2"
+            className="flex-1 py-2.5 px-3 bg-[#2E5339] hover:bg-[#24422e] text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${syncState.isSyncing ? 'animate-spin' : ''}`} />
-            <span>{syncState.isSyncing ? 'Syncing Queue...' : 'Force Sync All Now'}</span>
+            <span>{syncState.isSyncing ? 'Syncing Queue...' : 'Sync Queue Now'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={handlePull}
+            disabled={syncState.isSyncing}
+            className="py-2.5 px-3 border border-stone-300 text-stone-700 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-stone-50 cursor-pointer disabled:opacity-50"
+          >
+            <ArrowDownToLine className="w-3.5 h-3.5 text-blue-600" />
+            <span>Pull Cloud</span>
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="btn-secondary py-2.5 text-xs font-semibold"
+            className="py-2.5 px-3 border border-stone-200 text-stone-600 rounded-xl text-xs font-semibold hover:bg-stone-50 cursor-pointer"
           >
             Close
           </button>

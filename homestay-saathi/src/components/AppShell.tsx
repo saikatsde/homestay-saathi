@@ -19,6 +19,7 @@ import {
   drainSyncQueue 
 } from "../lib/sync/syncEngine";
 import { getModelAvailability } from "../lib/ai/availability";
+import { initAuthListener } from "../lib/firebase/auth";
 
 // Global Layout Components
 import { Header } from "./Header";
@@ -45,6 +46,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     failedCount: 0,
     lastSyncedAt: null,
     lastError: null,
+    cloudSynced: false,
   });
 
   // Model Availability State
@@ -104,9 +106,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       setSyncState(state);
     });
 
+    const unsubAuth = initAuthListener();
+
     return () => {
       unsubConn();
       unsubSync();
+      unsubAuth();
     };
   }, []);
 
