@@ -1,0 +1,41 @@
+{
+  "name": "Homestay Saathi | Himalayan Homestay Copilot",
+  "short_name": "Homestay Saathi",
+  "description": "Offline-first PWA copilot with on-device AI for tea-garden homestay hosts in Darjeeling & Himalayan villages.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FDF6EC",
+  "theme_color": "#2E5339",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Booking",
+      "short_name": "Booking",
+      "description": "Quickly record a new guest check-in",
+      "url": "/?tab=bookings",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Cash Ledger",
+      "short_name": "Ledger",
+      "description": "Track cash expenses & guest payments",
+      "url": "/?tab=ledger",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Guest Translator",
+      "short_name": "Translate",
+      "description": "Translate guest messages & reply in 1-tap",
+      "url": "/?tab=translate",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "192x192" }]
+    }
+  ]
+}

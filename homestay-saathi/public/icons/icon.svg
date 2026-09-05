@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2E5339"/>
+      <stop offset="100%" stop-color="#193321"/>
+    </linearGradient>
+    <linearGradient id="mountGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FDF6EC" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#E5D6C5" stop-opacity="0.8"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FBBF24"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- App Background -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+  
+  <!-- Inner Ring Highlight -->
+  <rect x="16" y="16" width="480" height="480" rx="96" fill="none" stroke="#FDF6EC" stroke-opacity="0.12" stroke-width="6"/>
+
+  <!-- Himalayan Peaks Background -->
+  <path d="M120 310 L220 180 L280 250 L340 160 L420 310 Z" fill="url(#mountGrad)"/>
+  <path d="M220 180 L200 215 L235 225 Z" fill="#FFFFFF"/>
+  <path d="M340 160 L320 200 L355 210 Z" fill="#FFFFFF"/>
+
+  <!-- Morning Mountain Sun -->
+  <circle cx="370" cy="130" r="28" fill="url(#goldGrad)" />
+  
+  <!-- Tea Leaves / Plantation Rolling Terraces -->
+  <path d="M60 370 Q160 310 260 350 T460 340 L460 440 Q360 460 260 440 T60 450 Z" fill="#3D6B4B"/>
+  <path d="M60 400 Q160 350 260 390 T460 380 L460 450 L60 450 Z" fill="#24452E"/>
+
+  <!-- Steaming Tea Cup / Bowl -->
+  <g transform="translate(196, 260)">
+    <!-- Steam -->
+    <path d="M40 0 Q30 -25 45 -45" fill="none" stroke="#FDF6EC" stroke-width="6" stroke-linecap="round" stroke-opacity="0.75"/>
+    <path d="M60 -5 Q70 -30 55 -50" fill="none" stroke="#FDF6EC" stroke-width="6" stroke-linecap="round" stroke-opacity="0.75"/>
+    <path d="M80 0 Q70 -25 85 -45" fill="none" stroke="#FDF6EC" stroke-width="6" stroke-linecap="round" stroke-opacity="0.75"/>
+
+    <!-- Cup Body -->
+    <path d="M20 20 Q20 90 60 90 Q100 90 100 20 Z" fill="#FDF6EC"/>
+    <ellipse cx="60" cy="20" rx="40" ry="12" fill="#D97706"/>
+    <!-- Saucer -->
+    <ellipse cx="60" cy="94" rx="55" ry="8" fill="#E5D6C5"/>
+  </g>
+</svg>
